@@ -30,4 +30,8 @@ sequenceDiagram
     deactivate server    
 
     Note right of browser: Haetaan Data.json data
+
+    browser->>server: POST https://studies.cs.helsinki.fi/exampleapp/notes
+
+    Note right of browser: Selain lähettää viestin POST-metodilla
 ```
