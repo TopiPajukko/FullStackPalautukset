@@ -18,9 +18,11 @@ const Content = (props) => {
 }
 
 const Part = (props) => {
+  return (
   <div>
   <p>{props.partName} {props.partExercises}</p>
   </div>
+  )
 }
 
 const Total = (props) => {
