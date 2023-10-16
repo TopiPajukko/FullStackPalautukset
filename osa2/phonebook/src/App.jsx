@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/jsx-no-undef */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import personService from './services/persons'
 
 const Filter = ({value, handleChange}) => {
   return(
@@ -37,28 +38,39 @@ const Persons =({persons}) => {
 }
 
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: 'Arto Hellas' , nro: '040 0000001'},
-    { name: 'Ada Lovelace', nro: '39-44-5323523' },
-    { name: 'Dan Abramov', nro: '12-43-234345' },
-    { name: 'Mary Poppendieck', nro: '39-23-6423122' }
-  ]) 
+  const [persons, setPersons] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newNro, setNewNro] = useState('')
   const [filterValue, setFilterName] = useState('')
+  
+  useEffect(()=>{
+  personService.getAll().then(response =>{setPersons(response.data)})
+  })
+
+  const deletePerson = id => {
+    const person = persons.find(n => n.id === id)
+    if(window.confirm(`Delete ${person.name} ?`))
+    {
+      personService.deletePerson(id)
+      setPersons(persons.filter(persons => persons.id !== id))
+    }
+  }
 
   const addPerson = (event) => {
     event.preventDefault()
-    const personObj =[{
+    const personObj ={
       name: newName,
-      nro: newNro
-    }]
+      number: newNro
+    }
 
     if(persons.find((elem) => elem.name === newName)) {
-      alert(`${newName} is already added to phonebook`)
+      if(window.confirm(`${newName} is already added to phonebook. Want to replace old number?`)) {
+        const updatedPerson = persons.find((elem) => elem.name === newName)
+        personService.update(updatedPerson.id, personObj)
+      }
     }
     else {
-      setPersons(persons.concat(personObj))
+      personService.create(personObj).then(response => {console.log(response.data)})
     }
   }
 
@@ -71,9 +83,16 @@ const App = () => {
   const filteredPersons = persons.map(elem => elem.name.toLowerCase().includes(filterValue.toLowerCase()))?
   persons.filter(elem => elem.name.toLowerCase().includes(filterValue.toLowerCase())):persons
 
-  const allPersons = filteredPersons.map(persons => {return <p key={persons.name}>{persons.name} {persons.nro}</p>})
+  const allPersons = filteredPersons.map(person => {
+    return(
+    <div key={person.id}>
+    <p> {person.name} {person.number}</p>
+    <button type="button" onClick={() => deletePerson(person.id)}>Delete</button>
+    </div>
+   )}
+  )
 
-  return (
+  return(
     <div>
       <h2>Phonebook</h2>
       <Filter value={filterValue} handleChange={handleNewFilter}/>
