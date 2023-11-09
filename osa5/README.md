@@ -1,1 +1,0 @@
-# OSA 5 ALKAA TÄSTÄ
