@@ -1,8 +1,10 @@
 const mongoose = require('mongoose')
 const supertest = require('supertest')
+const bcrypt = require ('bcrypt')
 const app = require('../app')
 const Blog = require ('../models/blog')
 const { initial } = require('lodash')
+const User = require('../models/user')
 const api = supertest(app)
 
 const initialBlogs = [
@@ -55,6 +57,20 @@ const initialBlogs = [
   __v: 0
 }]
 
+beforeEach(async () => {  
+  await User.deleteMany({})
+
+  const passwordHash = await bcrypt.hash("nakki", 10)
+    const user = new User({
+       username: "topi",
+       name: "topi",
+       blogs: [],
+       passwordHash
+    })
+  
+    await user.save()
+})
+
 beforeEach(async () => {
   await Blog.deleteMany({})
   const blogObjects = initialBlogs
@@ -65,14 +81,9 @@ beforeEach(async () => {
       likes: blog.likes ? blog.likes : 0
     }))
 
-  //const promises = blogObjects.map(blog => {
-      //blog.save() EI TOIMI
-
     const savePromises = blogObjects.map(blog => blog.save());
     await Promise.all(savePromises)
-    })
-  //await Promise.all(promises)
-//}, 100000) EI TOIMI
+    }, 1000)
 
 describe('when there is initially some blogs saved', () => {
 
@@ -89,6 +100,16 @@ describe('when there is initially some blogs saved', () => {
   })
 
   test('blog post can be added with POST -method', async () => {
+
+    const user = {
+      username: "topi",
+      password: "nakki",
+    }
+
+    const userLogin = await api
+    .post('/api/login')
+    .send(user)
+
     const newBlog = (
       {
         title: 'Jarkon Elama',
@@ -97,13 +118,22 @@ describe('when there is initially some blogs saved', () => {
         likes: 8
       }
     )
-    await api.post('/api/blogs').send(newBlog)
+    await api.post('/api/blogs').send(newBlog).set('Authorization', `bearer ${userLogin.body.token}`)
 
     const response = await api.get('/api/blogs')
     expect(response.body).toHaveLength(initialBlogs.length + 1)
   })
 
   test('if likes are not defined then value is set to 0', async () => {
+
+    const user = {
+      username: "topi",
+      password: "nakki",
+    }
+
+    const userLogin = await api
+    .post('/api/login')
+    .send(user)
     
     const newBlog = (
       {
@@ -112,13 +142,22 @@ describe('when there is initially some blogs saved', () => {
         url: 'www.jarkko.com',
       }
     )
-    await api.post('/api/blogs').send(newBlog)
+    await api.post('/api/blogs').send(newBlog).set('Authorization', `bearer ${userLogin.body.token}`)
 
     const response = await api.get('/api/blogs')
     expect(response.body[response.body.length -1].likes).toEqual(0)
   })
 
   test('return 400 if title or url is not defined', async () => {
+
+    const user = {
+      username: "topi",
+      password: "nakki",
+    }
+
+    const userLogin = await api
+    .post('/api/login')
+    .send(user)
     
     const newBlog = new Blog(
       {
@@ -127,17 +166,33 @@ describe('when there is initially some blogs saved', () => {
         url: 'www.jarkko.com',
       }
     )
-    await api.post('/api/blogs').send(newBlog).expect(400)
+    await api.post('/api/blogs').send(newBlog).expect(400).set('Authorization', `bearer ${userLogin.body.token}`)
   })
 })
 
 describe('deleting a blog', () => {
 
   test('blog can be deleted', async () => {
-    const blogs = await api.get('/api/blogs')
-    await api.delete(`/api/blogs/${blogs.body[0].id}`)
+    const user = {
+      username: "topi",
+      password: "nakki",
+    }
+
+    const userLogin = await api
+    .post('/api/login')
+    .send(user)
+    
+    const newBlog =
+      {
+        title: 'Jarkon Elama',
+        author: 'Jarkko Tuomonen',
+        url: 'www.jarkko.com',
+      }
+      
+    const post = await api.post('/api/blogs').send(newBlog).set('Authorization', `bearer ${userLogin.body.token}`)
+    await api.delete(`/api/blogs/${post.body.id}`).set('Authorization', `bearer ${userLogin.body.token}`)
     const response = await api.get('/api/blogs')
-    expect(response.body).toHaveLength(initialBlogs.length - 1)
+    expect(response.body).toHaveLength(initialBlogs.length)
   })
 })
 
@@ -160,6 +215,24 @@ describe('updating a blog', () => {
 
     expect(likesAfter).not.toEqual(likesBefore)
   })
+})
+
+describe('user tests', () => {
+  test('cant create invalid user', async () => {
+
+    const newUser = {
+        username: 'to',
+        name: 'topi',
+        password: 'nakki'
+    }
+
+    const result = await api 
+        .post('/api/users')
+        .send(newUser)
+        .expect(400)
+
+    expect(result.body.error).toContain('password or username must be at least 3 characters long')
+  }, 1000)
 })
 
 afterAll(async () => {
