@@ -1,6 +1,5 @@
 const blogRouter = require('express').Router()
 const Blog = require ('../models/blog')
-const jwt = require('jsonwebtoken')
 
 blogRouter.get('/', async (request, response) => {
 	const blogs = await Blog.find({}).populate('user',{username: 1, name: 1, id: 1})
@@ -75,10 +74,5 @@ blogRouter.put('/:id', async (request, response) => {
 	await Blog.findByIdAndUpdate(request.params.id, blog, { new: true })
 	response.json(blog)
   })
-  
-//   const PORT = 3003
-//   app.listen(PORT, () => {
-//     console.log(`Server running on port ${PORT}`)
-//   })
 
 module.exports = blogRouter
